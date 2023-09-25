@@ -31,7 +31,7 @@ let characterHeight = 16;
 let characterPositionX = (canvas.width / 2 - characterWidth / 2);
 let characterPositionY = (canvas.height - characterHeight)
 
-function drawCharacter(left_key_name, right_key_name) {
+function createCharacter(left_key_name, right_key_name) {
     return {
         x: characterPositionX,
         y: characterPositionY,
@@ -65,7 +65,7 @@ function drawCharacter(left_key_name, right_key_name) {
     };
 };
 
-var character = drawCharacter('K_a', 'K_d');
+var character = createCharacter('K_a', 'K_d');
 
 //ball
 
@@ -80,10 +80,10 @@ let yMiddle = (canvas.height / 4 + (canvas.height / 2));
 
 function drawBall(space_key_name) {
     return {
-        x: xMiddle,
-        y: yMiddle,
+        x: character.x + characterWidth / 2,
+        y: character.y - 8,
         vx: getRandomSpeed(),
-        vy: getRandomSpeed(),
+        vy: -getRandomSpeed(),
         radius: 8,
         color: "#F9DEC9",
         isPlaying: false,
@@ -95,6 +95,10 @@ function drawBall(space_key_name) {
             ctx.stroke();
         },
         update() {
+            if (!this.isPlaying) {
+                this.y = character.y - this.radius;
+                this.x = character.x + characterWidth / 2;
+            }
             if (!this.isPlaying && keys[space_key_name]) {
                 this.isPlaying = true
             }
@@ -106,22 +110,28 @@ function drawBall(space_key_name) {
         },
         resetBall() {
             if (this.y + this.radius > canvas.height) {
-                this.y = yMiddle;
-                this.x = xMiddle;
                 this.isPlaying = false;
+                resetMultiplier();
+                losingLife();
             }
         }
     }
 };
 
 function collision() {
-    if (character.y < ball.y + ball.radius &&
-        character.x < ball.x + ball.radius &&
-        character.x + character.width > ball.x
-    ) {
-        ball.vy = -ball.vy;
+    // if (character.y < ball.y + ball.radius &&
+    //     character.x < ball.x + ball.radius &&
+    //     character.x + character.width > ball.x
+    // ) {
+    //     ball.vy = -ball.vy;
 
-    };
+    // };
+    if (ball.vy > character.y - ball.y + ball.radius &&
+        ball.x + ball.radius > character.x &&
+        ball.x < character.x + characterWidth) {
+        ball.vy = -ball.vy;
+        ball.y = character.y - ball.radius - 1;
+    }
 };
 
 function canvasCollision() {
@@ -146,10 +156,14 @@ const blockOffsetTop = 2;
 const blockOffsetLeft = 2;
 
 const blocks = [];
+const maxY = ((blockRows -2) * (blockHeight + blockPadding)) + blockOffsetTop;
 for (let c = 0; c < blockColumns; c++) {
     blocks[c] = [];
     for (let r = 0; r < blockRows; r++) {
-        blocks[c][r] = { x: 0, y: 0, status: 1 };
+        const blockX = (c * (blockWidth + blockPadding)) + blockOffsetLeft;
+        const blockY = (r * (blockHeight + blockPadding)) + blockOffsetTop;
+        const color = "rgb("+(blockY/maxY)*255+","+(blockY/maxY)*100+",100)";
+        blocks[c][r] = { x: blockX, y: blockY, status: 1, color: color};
     }
 };
 
@@ -157,13 +171,9 @@ function drawBlocks() {
     for (let c = 0; c < blockColumns; c++) {
         for (let r = 0; r < blockRows; r++) {
             if (blocks[c][r].status === 1) {
-                const blockX = (c * (blockWidth + blockPadding)) + blockOffsetLeft;
-                const blockY = (r * (blockHeight + blockPadding)) + blockOffsetTop;
-                blocks[c][r].x = blockX;
-                blocks[c][r].y = blockY;
                 ctx.beginPath();
-                ctx.rect(blockX, blockY, blockWidth, blockHeight);
-                ctx.fillStyle = "#3D0C11";
+                ctx.rect(blocks[c][r].x, blocks[c][r].y, blockWidth, blockHeight);
+                ctx.fillStyle = blocks[c][r].color;
                 ctx.fill();
                 ctx.closePath();
             }
@@ -183,11 +193,11 @@ function blockCollision() {
                 ) {
                     ball.vy = -ball.vy
                     b.status = 0;
-                    score++;
                     multiplier++;
+                    score += multiplier;
                     console.log(score);
                     console.log(multiplier);
-                    console.log(value);
+                    console.log(sum);
                 }
             }
         }
@@ -199,15 +209,13 @@ let score = 0;
 let multiplier = 0;
 
 function somaScore() {
-    sum = (score + multiplier)
+    sum = score
 };
 
 var value = somaScore;
 
 function resetMultiplier() {
-    if (this.y + this.radius > canvas.height) {
-        multiplier = 1;
-    }
+    multiplier = 0;
 }
 
 function drawScore() {
@@ -221,20 +229,19 @@ function drawScore() {
 let life = 3
 
 function losingLife() {
-        if (ball.y + ball.radius > canvas.height) {
-            life = life - 1;
-            console.log(life)
-        }
-        if (life < 1){
-            window.location.replace("gameover.html")
-        }
+    life = life - 1;
+    console.log(life)
+    if (life < 1) {
+        window.location.replace("gameover.html");
+        document.getElementById("scoreSum").innerHTML=`Score: ${sum}`
     }
+}
 
-    function drawLife() {
-        ctx.font = "16px Arial";
-        ctx.fillStyle = "#D80032";
-        ctx.fillText(`Tries: ${life}`, 265, 825);
-    }
+function drawLife() {
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "#D80032";
+    ctx.fillText(`Tries: ${life}`, 265, 825);
+}
 
 // draw phase
 
@@ -251,7 +258,5 @@ function main() {
     collision();
     somaScore();
     drawScore();
-    resetMultiplier();
-    losingLife();
     drawLife();
 }
